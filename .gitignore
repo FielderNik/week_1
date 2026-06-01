@@ -63,3 +63,11 @@ temp/
 *.tar
 *.tar.gz
 *.tgz
+
+# Video files
+*.mov
+*.mp4
+*.m4v
+*.avi
+*.mkv
+*.webm
