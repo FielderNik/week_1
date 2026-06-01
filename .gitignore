@@ -1,0 +1,65 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IntelliJ IDEA / Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Gradle / Kotlin
+.gradle/
+**/build/
+**/.gradle/
+**/.kotlin/
+**/out/
+*.class
+
+# Keep Gradle wrapper files tracked, but ignore downloaded wrapper distributions.
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Kotlin/Native
+*.klib
+.konan/
+
+# Logs and runtime dumps
+*.log
+hs_err_pid*
+replay_pid*
+
+# Local env and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+local.properties
+**/local.properties
+secrets/
+**/secrets/
+secret/
+**/secret/
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# Tool caches and temp files
+.cache/
+.tmp/
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+
+# Archives and generated artifacts
+*.zip
+*.tar
+*.tar.gz
+*.tgz
