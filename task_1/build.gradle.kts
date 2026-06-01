@@ -18,6 +18,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    runtimeOnly("org.slf4j:slf4j-nop:2.0.17")
 
     testImplementation(kotlin("test"))
 }
