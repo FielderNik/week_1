@@ -27,6 +27,10 @@ out/
 
 # Logs and runtime dumps
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 hs_err_pid*
 replay_pid*
 
@@ -48,6 +52,21 @@ secret/
 *.keystore
 google-services.json
 GoogleService-Info.plist
+
+# Web apps
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.vite/
+**/.vite/
+coverage/
+**/coverage/
+playwright-report/
+**/playwright-report/
+test-results/
+**/test-results/
+*.tsbuildinfo
 
 # Tool caches and temp files
 .cache/
