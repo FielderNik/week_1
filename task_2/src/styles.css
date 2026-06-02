@@ -48,9 +48,9 @@ button:disabled {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: 260px minmax(0, 1fr) 320px;
   gap: 20px;
-  width: min(1180px, calc(100% - 32px));
+  width: min(1440px, calc(100% - 32px));
   height: 100vh;
   min-height: 100vh;
   margin: 0 auto;
@@ -58,6 +58,7 @@ button:disabled {
 }
 
 .chat-panel,
+.saved-dialogs-panel,
 .settings-panel {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -67,7 +68,7 @@ button:disabled {
 
 .chat-panel {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   height: calc(100vh - 64px);
   min-height: 0;
   overflow: hidden;
@@ -80,6 +81,13 @@ button:disabled {
   gap: 16px;
   padding: 22px 24px;
   border-bottom: 1px solid var(--border);
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .eyebrow {
@@ -105,6 +113,64 @@ h1 {
 h2 {
   margin-bottom: 16px;
   font-size: 1rem;
+  line-height: 1.3;
+}
+
+.dialog-info {
+  display: grid;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: #fbfcfd;
+}
+
+.dialog-title-block {
+  display: grid;
+  gap: 3px;
+}
+
+.dialog-title-block span,
+.dialog-metadata summary {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.dialog-title-block strong {
+  color: #252a31;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.dialog-metadata summary {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.dialog-metadata dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 10px 0 0;
+}
+
+.dialog-metadata div {
+  min-width: 0;
+}
+
+.dialog-metadata dt {
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.dialog-metadata dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #252a31;
+  font-size: 0.82rem;
   line-height: 1.3;
 }
 
@@ -428,6 +494,11 @@ select {
   color: #fff;
 }
 
+.compact-button {
+  min-width: auto;
+  padding: 0 14px;
+}
+
 .primary-button:hover:not(:disabled) {
   background: var(--accent-strong);
 }
@@ -441,6 +512,126 @@ select {
 
 .ghost-button:hover {
   background: var(--surface-muted);
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: #3b4654;
+  padding: 0;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.icon-button:focus-visible {
+  outline: 3px solid rgb(23 105 224 / 0.22);
+  outline-offset: 2px;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.danger-icon-button {
+  color: var(--danger);
+}
+
+.danger-icon-button:hover:not(:disabled) {
+  border-color: #f0b5ae;
+  background: #fff1f0;
+}
+
+.saved-dialogs-panel {
+  align-self: start;
+  max-height: calc(100vh - 64px);
+  overflow: hidden;
+}
+
+.saved-dialogs-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 18px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.saved-dialogs-header h2 {
+  margin-bottom: 0;
+}
+
+.saved-dialogs-list {
+  display: grid;
+  gap: 8px;
+  max-height: calc(100vh - 153px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+}
+
+.saved-dialogs-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.saved-dialog-item {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #252a31;
+  padding: 10px;
+  text-align: left;
+}
+
+.saved-dialog-item:hover,
+.saved-dialog-item.is-active {
+  border-color: var(--border);
+  background: var(--surface-muted);
+}
+
+.saved-dialog-item.is-active {
+  border-color: #b7cdf4;
+  background: #eaf2ff;
+}
+
+.saved-dialog-item strong,
+.saved-dialog-item span,
+.saved-dialog-item small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-dialog-item strong {
+  font-size: 0.94rem;
+  line-height: 1.2;
+}
+
+.saved-dialog-item span,
+.saved-dialog-item small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.25;
 }
 
 .settings-panel {
@@ -470,6 +661,48 @@ select {
   font-weight: 700;
 }
 
+.save-dialog {
+  width: min(420px, calc(100% - 32px));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: #15171a;
+  padding: 0;
+  box-shadow: var(--shadow);
+}
+
+.save-dialog::backdrop {
+  background: rgb(21 23 26 / 0.36);
+}
+
+.save-dialog-form {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.save-dialog-form h2 {
+  margin-bottom: 0;
+  font-size: 1.15rem;
+}
+
+.save-dialog-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.save-dialog-form label span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.save-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .settings-panel textarea {
   min-height: 110px;
 }
@@ -486,12 +719,25 @@ select {
   border: 0;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1040px) {
   .app-shell {
     grid-template-columns: 1fr;
     width: min(100% - 20px, 620px);
     height: auto;
     padding: 10px 0 18px;
+  }
+
+  .saved-dialogs-panel,
+  .settings-panel {
+    max-height: none;
+  }
+
+  .saved-dialogs-list {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(190px, 1fr);
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .chat-panel {
@@ -518,5 +764,9 @@ select {
 
   .message {
     max-width: 92%;
+  }
+
+  .dialog-metadata dl {
+    grid-template-columns: 1fr;
   }
 }
