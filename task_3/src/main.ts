@@ -18,7 +18,7 @@ type SavedChat = {
 };
 
 const customModelValue = "__custom__";
-const savedChatsStorageKey = "chat_template:saved-chats";
+const savedChatsStorageKey = "task_3:saved-chats";
 const modelOptions = [
   {
     value: "deepseek-v4-flash",
@@ -99,8 +99,8 @@ appRoot.innerHTML = `
     <section class="chat-panel" aria-label="AI chat">
       <header class="chat-header">
         <div>
-          <p class="eyebrow">AI Chat Template</p>
-          <h1>Минимальный чат</h1>
+          <p class="eyebrow">task_3</p>
+          <h1>task_3</h1>
         </div>
         <div class="header-actions">
           <button class="primary-button compact-button" data-action="save" type="button">Сохранить</button>
