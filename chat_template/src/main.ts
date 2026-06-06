@@ -1,56 +1,9 @@
 import "./styles.css";
-import { marked } from "marked";
-import { ChatMessage, ChatSettings, requestChatCompletion } from "./deepseek";
-
-type UiChatMessage = ChatMessage & {
-  createdAt: string;
-};
-
-type SavedChatMetadata = Omit<ChatSettings, "apiKey">;
-
-type SavedChat = {
-  id: string;
-  title: string;
-  messages: UiChatMessage[];
-  metadata: SavedChatMetadata;
-  createdAt: string;
-  updatedAt: string;
-};
-
-const customModelValue = "__custom__";
-const savedChatsStorageKey = "chat_template:saved-chats";
-const modelOptions = [
-  {
-    value: "deepseek-v4-flash",
-    label: "DeepSeek V4 Flash",
-  },
-  {
-    value: "deepseek-v4-pro",
-    label: "DeepSeek V4 Pro",
-  },
-  {
-    value: "deepseek-chat",
-    label: "DeepSeek Chat (legacy)",
-  },
-  {
-    value: "deepseek-reasoner",
-    label: "DeepSeek Reasoner (legacy)",
-  },
-];
-
-const initialSettings: ChatSettings = {
-  apiKey: import.meta.env.VITE_DEEPSEEK_API_KEY || "",
-  baseUrl: import.meta.env.VITE_DEEPSEEK_BASE_URL || "https://api.deepseek.com",
-  model: import.meta.env.VITE_DEEPSEEK_MODEL || "deepseek-v4-flash",
-  systemPrompt: "Ты полезный AI-ассистент. Отвечай кратко и по делу.",
-  temperature: 0.7,
-  topP: 1,
-  maxTokens: 1200,
-  responseFormat: "text",
-  stopSequences: "",
-  thinkingMode: "enabled",
-  reasoningEffort: "high",
-};
+import { requestChatCompletion } from "./deepseek";
+import { renderMarkdown } from "./markdown";
+import { customModelValue, initialSettings, isChatSettingsKey, modelOptions, parseNumberSetting } from "./settings";
+import { loadSavedChats, persistSavedChats } from "./storage";
+import type { ChatMessage, ChatSettings, SavedChat, SavedChatMetadata, UiChatMessage } from "./types";
 
 let messages: UiChatMessage[] = [];
 let settings: ChatSettings = { ...initialSettings };
@@ -73,8 +26,8 @@ appRoot.innerHTML = `
     <aside class="saved-dialogs-panel" aria-label="Saved chats">
       <div class="saved-dialogs-header">
         <div>
-          <p class="eyebrow">История</p>
-          <h2>Сохраненные диалоги</h2>
+          <p class="wordmark">Chat Template</p>
+          <h2>Диалоги</h2>
         </div>
         <button
           class="icon-button danger-icon-button"
@@ -99,8 +52,8 @@ appRoot.innerHTML = `
     <section class="chat-panel" aria-label="AI chat">
       <header class="chat-header">
         <div>
-          <p class="eyebrow">AI Chat Template</p>
-          <h1>Минимальный чат</h1>
+          <h1>AI Chat Template</h1>
+          <p>Минимальный браузерный чат для задач курса</p>
         </div>
         <div class="header-actions">
           <button class="primary-button compact-button" data-action="save" type="button">Сохранить</button>
@@ -110,10 +63,10 @@ appRoot.innerHTML = `
 
       <section class="dialog-info" aria-label="Текущий диалог">
         <div class="dialog-title-block">
-          <span>Название</span>
+          <span>Текущий диалог</span>
           <strong data-current-dialog-title></strong>
         </div>
-        <details class="dialog-metadata" open>
+        <details class="dialog-metadata">
           <summary>Метаданные: настройки ИИ</summary>
           <dl data-current-dialog-metadata></dl>
         </details>
@@ -127,7 +80,7 @@ appRoot.innerHTML = `
           id="message-input"
           name="message"
           rows="3"
-          placeholder="Напишите сообщение..."
+          placeholder="Спросите что-нибудь"
           autocomplete="off"
           data-message-input
         ></textarea>
@@ -136,7 +89,7 @@ appRoot.innerHTML = `
     </section>
 
     <aside class="settings-panel" aria-label="Chat settings">
-      <h2>Параметры</h2>
+      <h2>Параметры AI</h2>
 
       <form class="settings-form" autocomplete="off">
         <label>
@@ -270,80 +223,6 @@ if (
   throw new Error("Required UI elements were not found.");
 }
 
-function loadSavedChats() {
-  try {
-    const rawValue = localStorage.getItem(savedChatsStorageKey);
-
-    if (!rawValue) {
-      return [];
-    }
-
-    const parsed = JSON.parse(rawValue) as unknown;
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.filter(isSavedChat).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
-  } catch {
-    return [];
-  }
-}
-
-function isSavedChat(value: unknown): value is SavedChat {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<SavedChat>;
-  return (
-    typeof candidate.id === "string" &&
-    typeof candidate.title === "string" &&
-    Array.isArray(candidate.messages) &&
-    candidate.messages.every(isUiChatMessage) &&
-    isSavedChatMetadata(candidate.metadata) &&
-    typeof candidate.createdAt === "string" &&
-    typeof candidate.updatedAt === "string"
-  );
-}
-
-function isUiChatMessage(value: unknown): value is UiChatMessage {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<UiChatMessage>;
-  return (
-    (candidate.role === "user" || candidate.role === "assistant") &&
-    typeof candidate.content === "string" &&
-    typeof candidate.createdAt === "string"
-  );
-}
-
-function isSavedChatMetadata(value: unknown): value is SavedChatMetadata {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<SavedChatMetadata>;
-  return (
-    typeof candidate.baseUrl === "string" &&
-    typeof candidate.model === "string" &&
-    typeof candidate.systemPrompt === "string" &&
-    typeof candidate.temperature === "number" &&
-    typeof candidate.topP === "number" &&
-    typeof candidate.maxTokens === "number" &&
-    (candidate.responseFormat === "text" || candidate.responseFormat === "json_object") &&
-    typeof candidate.stopSequences === "string" &&
-    (candidate.thinkingMode === "enabled" || candidate.thinkingMode === "disabled") &&
-    (candidate.reasoningEffort === "high" || candidate.reasoningEffort === "max")
-  );
-}
-
-function persistSavedChats() {
-  localStorage.setItem(savedChatsStorageKey, JSON.stringify(savedChats));
-}
-
 function createChatId() {
   if (typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -367,7 +246,11 @@ function applySavedMetadata(metadata: SavedChatMetadata) {
 
 function syncSettingsForm() {
   appRoot.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("[data-setting]").forEach((control) => {
-    const settingName = control.dataset.setting as keyof ChatSettings;
+    const settingName = control.dataset.setting;
+
+    if (!settingName || !isChatSettingsKey(settingName)) {
+      return;
+    }
 
     if (settingName === "model" && control instanceof HTMLSelectElement) {
       const isKnownModel = modelOptions.some((model) => model.value === settings.model);
@@ -425,8 +308,8 @@ function renderMessages() {
   if (messages.length === 0) {
     messagesContainer.innerHTML = `
       <div class="empty-state">
-        <h2>Начните диалог</h2>
-        <p>Шаблон готов к отправке сообщений в DeepSeek API.</p>
+        <h2>С чего начнем?</h2>
+        <p>Шаблон готов отправлять сообщения в DeepSeek API.</p>
       </div>
     `;
     return;
@@ -491,19 +374,19 @@ function updateSetting(name: keyof ChatSettings, rawValue: string) {
   }
 
   if (name === "temperature") {
-    settings.temperature = Number(rawValue);
+    settings.temperature = parseNumberSetting(rawValue, settings.temperature, 0, 2);
     temperatureValue.textContent = settings.temperature.toFixed(1);
     return;
   }
 
   if (name === "topP") {
-    settings.topP = Number(rawValue);
+    settings.topP = parseNumberSetting(rawValue, settings.topP, 0, 1);
     topPValue.textContent = settings.topP.toFixed(2);
     return;
   }
 
   if (name === "maxTokens") {
-    settings.maxTokens = Number(rawValue);
+    settings.maxTokens = parseNumberSetting(rawValue, settings.maxTokens, 1, 8000);
     return;
   }
 
@@ -606,7 +489,7 @@ function saveCurrentChat(title: string) {
   savedChats = savedChats.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   activeSavedChatId = savedChat.id;
   currentChatTitle = savedChat.title;
-  persistSavedChats();
+  persistSavedChats(savedChats);
   renderSavedChats();
   renderMessages();
 }
@@ -625,7 +508,7 @@ function clearSavedChats() {
   savedChats = [];
   activeSavedChatId = null;
   currentChatTitle = "Новый диалог";
-  persistSavedChats();
+  persistSavedChats(savedChats);
   renderSavedChats();
   renderMessages();
   messageInput.focus();
@@ -664,70 +547,7 @@ function renderMessageContent(message: UiChatMessage) {
     return `<p>${escapeHtml(message.content)}</p>`;
   }
 
-  return sanitizeMarkdown(marked.parse(message.content, { async: false }) as string);
-}
-
-function sanitizeMarkdown(html: string) {
-  const allowedTags = new Set([
-    "a",
-    "blockquote",
-    "br",
-    "code",
-    "del",
-    "em",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "hr",
-    "li",
-    "ol",
-    "p",
-    "pre",
-    "strong",
-    "table",
-    "tbody",
-    "td",
-    "th",
-    "thead",
-    "tr",
-    "ul",
-  ]);
-  const allowedAttributes = new Set(["href", "title"]);
-  const template = document.createElement("template");
-  template.innerHTML = html;
-
-  template.content.querySelectorAll("*").forEach((element) => {
-    const tagName = element.tagName.toLowerCase();
-
-    if (!allowedTags.has(tagName)) {
-      element.replaceWith(...Array.from(element.childNodes));
-      return;
-    }
-
-    Array.from(element.attributes).forEach((attribute) => {
-      const attributeName = attribute.name.toLowerCase();
-
-      if (!allowedAttributes.has(attributeName)) {
-        element.removeAttribute(attribute.name);
-      }
-    });
-
-    if (tagName === "a") {
-      const href = element.getAttribute("href") || "";
-
-      if (!/^https?:\/\//i.test(href) && !href.startsWith("#")) {
-        element.removeAttribute("href");
-      }
-
-      element.setAttribute("target", "_blank");
-      element.setAttribute("rel", "noreferrer noopener");
-    }
-  });
-
-  return template.innerHTML;
+  return renderMarkdown(message.content);
 }
 
 function formatMessageTime(value: string) {
@@ -749,9 +569,9 @@ function handleSettingsEvent(event: Event) {
     return;
   }
 
-  const settingName = target.dataset.setting as keyof ChatSettings | undefined;
+  const settingName = target.dataset.setting;
 
-  if (settingName) {
+  if (settingName && isChatSettingsKey(settingName)) {
     updateSetting(settingName, target.value);
     renderCurrentDialogInfo();
   }

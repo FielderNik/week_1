@@ -1,11 +1,6 @@
-export type ChatRole = "system" | "user" | "assistant";
+import type { ChatMessage, ChatSettings, ReasoningEffort, ResponseFormat, ThinkingMode } from "./types";
 
-export type ChatMessage = {
-  role: ChatRole;
-  content: string;
-};
-
-export type ChatSettings = {
+type DeepSeekRequestSettings = {
   apiKey: string;
   baseUrl: string;
   model: string;
@@ -13,10 +8,10 @@ export type ChatSettings = {
   temperature: number;
   topP: number;
   maxTokens: number;
-  responseFormat: "text" | "json_object";
+  responseFormat: ResponseFormat;
   stopSequences: string;
-  thinkingMode: "enabled" | "disabled";
-  reasoningEffort: "high" | "max";
+  thinkingMode?: ThinkingMode;
+  reasoningEffort?: ReasoningEffort;
 };
 
 type DeepSeekChoice = {
@@ -33,47 +28,77 @@ type DeepSeekResponse = {
   };
 };
 
+type DeepSeekRequestBody = {
+  model: string;
+  messages: ChatMessage[];
+  temperature: number;
+  top_p: number;
+  max_tokens: number;
+  response_format?: {
+    type: ResponseFormat;
+  };
+  stop?: string[];
+  thinking?: {
+    type: ThinkingMode;
+    reasoning_effort?: ReasoningEffort;
+  };
+  stream: false;
+};
+
 export async function requestChatCompletion(
   history: ChatMessage[],
   settings: ChatSettings,
   signal?: AbortSignal,
 ): Promise<string> {
+  const requestSettings = toDeepSeekRequestSettings(settings);
   const messages: ChatMessage[] = [
-    ...(settings.systemPrompt.trim()
-      ? [{ role: "system" as const, content: settings.systemPrompt.trim() }]
+    ...(requestSettings.systemPrompt.trim()
+      ? [{ role: "system" as const, content: requestSettings.systemPrompt.trim() }]
       : []),
     ...history,
   ];
 
-  const stop = settings.stopSequences
+  const stop = requestSettings.stopSequences
     .split("\n")
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 16);
+  const body: DeepSeekRequestBody = {
+    model: requestSettings.model,
+    messages,
+    temperature: requestSettings.temperature,
+    top_p: requestSettings.topP,
+    max_tokens: requestSettings.maxTokens,
+    stream: false,
+  };
 
-  const response = await fetch(`${settings.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+  if (requestSettings.responseFormat !== "text") {
+    body.response_format = {
+      type: requestSettings.responseFormat,
+    };
+  }
+
+  if (stop.length > 0) {
+    body.stop = stop;
+  }
+
+  if (requestSettings.thinkingMode) {
+    body.thinking = {
+      type: requestSettings.thinkingMode,
+      ...(requestSettings.thinkingMode === "enabled" && requestSettings.reasoningEffort
+        ? { reasoning_effort: requestSettings.reasoningEffort }
+        : {}),
+    };
+  }
+
+  const response = await fetch(`${requestSettings.baseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     signal,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${settings.apiKey}`,
+      Authorization: `Bearer ${requestSettings.apiKey}`,
     },
-    body: JSON.stringify({
-      model: settings.model,
-      messages,
-      temperature: settings.temperature,
-      top_p: settings.topP,
-      max_tokens: settings.maxTokens,
-      response_format: {
-        type: settings.responseFormat,
-      },
-      stop: stop.length > 0 ? stop : null,
-      thinking: {
-        type: settings.thinkingMode,
-        reasoning_effort: settings.reasoningEffort,
-      },
-      stream: false,
-    }),
+    body: JSON.stringify(body),
   });
 
   const data = (await response.json().catch(() => ({}))) as DeepSeekResponse;
@@ -89,4 +114,28 @@ export async function requestChatCompletion(
   }
 
   return answer;
+}
+
+function toDeepSeekRequestSettings(settings: ChatSettings): DeepSeekRequestSettings {
+  const baseSettings: DeepSeekRequestSettings = {
+    apiKey: settings.apiKey,
+    baseUrl: settings.baseUrl,
+    model: settings.model,
+    systemPrompt: settings.systemPrompt,
+    temperature: settings.temperature,
+    topP: settings.topP,
+    maxTokens: settings.maxTokens,
+    responseFormat: settings.responseFormat,
+    stopSequences: settings.stopSequences,
+  };
+
+  if (settings.model.startsWith("deepseek-v4")) {
+    return {
+      ...baseSettings,
+      thinkingMode: settings.thinkingMode,
+      reasoningEffort: settings.thinkingMode === "enabled" ? settings.reasoningEffort : undefined,
+    };
+  }
+
+  return baseSettings;
 }
