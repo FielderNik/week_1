@@ -44,6 +44,7 @@ export type TokenUsage = {
 
 export type UiChatMessage = ChatMessage & {
   createdAt: string;
+  responseDurationMs?: number;
 };
 
 export type SavedChatMetadata = Omit<ChatSettings, "apiKey"> & {

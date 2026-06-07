@@ -650,7 +650,7 @@ function renderSavedChats() {
 
 function renderCurrentDialogInfo() {
   currentDialogTitleElement.textContent = currentChatTitle;
-  currentDialogTokenCounterElement.value = `${formatTokenCount(currentTokenUsage.totalTokens)} токенов`;
+  currentDialogTokenCounterElement.value = formatTokenUsageWithCost(settings.model, currentTokenUsage);
   currentDialogTokenCounterElement.textContent = currentDialogTokenCounterElement.value;
   currentDialogMetadataElement.innerHTML = renderSettingsMetadata(settings, currentTokenUsage);
 }
@@ -674,7 +674,10 @@ function renderMessages() {
         <article class="message ${message.role}">
           <div class="message-meta">
             <strong>${message.role === "user" ? "Вы" : "AI"}</strong>
-            <time datetime="${message.createdAt}">${formatMessageTime(message.createdAt)}</time>
+            <span>
+              ${renderResponseDuration(message)}
+              <time datetime="${message.createdAt}">${formatMessageTime(message.createdAt)}</time>
+            </span>
           </div>
           <div class="message-content">
             ${renderMessageContent(message)}
@@ -771,6 +774,68 @@ function getSavedProviderLabel(metadata: SavedChatMetadata) {
 
 function formatTokenCount(value: number) {
   return new Intl.NumberFormat("ru-RU").format(value);
+}
+
+function formatTokenUsageWithCost(modelId: string, tokenUsage: TokenUsage) {
+  const tokensLabel = `${formatTokenCount(tokenUsage.totalTokens)} токенов`;
+  const usageCost = getTokenUsageCost(modelId, tokenUsage);
+
+  if (usageCost === undefined || usageCost <= 0) {
+    return tokensLabel;
+  }
+
+  return `${tokensLabel} · ${formatUsageCost(usageCost)}`;
+}
+
+function getTokenUsageCost(modelId: string, tokenUsage: TokenUsage) {
+  const model = modelCatalog.find((item) => item.id === modelId);
+
+  if (!model) {
+    return undefined;
+  }
+
+  const inputCost =
+    model.inputPricePerMillion === undefined ? undefined : (tokenUsage.promptTokens / 1_000_000) * model.inputPricePerMillion;
+  const outputCost =
+    model.outputPricePerMillion === undefined
+      ? undefined
+      : (tokenUsage.completionTokens / 1_000_000) * model.outputPricePerMillion;
+  const costParts = [inputCost, outputCost].filter((value): value is number => value !== undefined);
+
+  if (costParts.length === 0) {
+    return undefined;
+  }
+
+  return costParts.reduce((sum, value) => sum + value, 0);
+}
+
+function formatUsageCost(value: number) {
+  if (value > 0 && value < 0.0001) {
+    return "<$0.0001";
+  }
+
+  return `$${new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  }).format(value)}`;
+}
+
+function renderResponseDuration(message: UiChatMessage) {
+  if (message.role !== "assistant" || message.responseDurationMs === undefined) {
+    return "";
+  }
+
+  return `<span>${escapeHtml(formatResponseDuration(message.responseDurationMs))}</span>`;
+}
+
+function formatResponseDuration(value: number) {
+  if (value < 1000) {
+    return `${Math.max(1, Math.round(value))} мс`;
+  }
+
+  return `${new Intl.NumberFormat("ru-RU", {
+    maximumFractionDigits: value < 10_000 ? 1 : 0,
+  }).format(value / 1000)} с`;
 }
 
 function formatSavedChatDate(value: string) {
@@ -1182,13 +1247,23 @@ composer.addEventListener("submit", async (event) => {
 
   try {
     const apiMessages: ChatMessage[] = nextMessages.map(({ role, content }) => ({ role, content }));
+    const responseStartedAt = performance.now();
     const result = await requestChatCompletion(apiMessages, settings, activeRequest.signal);
+    const responseDurationMs = performance.now() - responseStartedAt;
 
     if (result.usage) {
       currentTokenUsage = addTokenUsage(currentTokenUsage, result.usage);
     }
 
-    messages = [...nextMessages, { role: "assistant", content: result.content, createdAt: new Date().toISOString() }];
+    messages = [
+      ...nextMessages,
+      {
+        role: "assistant",
+        content: result.content,
+        createdAt: new Date().toISOString(),
+        responseDurationMs,
+      },
+    ];
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       return;

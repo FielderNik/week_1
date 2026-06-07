@@ -290,6 +290,14 @@ h2 {
   font-weight: 500;
 }
 
+.message-meta > span {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
 .message time {
   flex: 0 0 auto;
 }
